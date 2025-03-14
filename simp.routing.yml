@@ -1,0 +1,7 @@
+simp.settings_form:
+  path: '/admin/config/system/simp'
+  defaults:
+    _form: '\Drupal\simp\Form\SimpSettingsForm'
+    _title: 'SIMP Settings'
+  requirements:
+    _permission: 'administer site configuration'

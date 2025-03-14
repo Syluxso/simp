@@ -1,0 +1,7 @@
+name: Spam Identification Management Protocol (SIMP)
+type: module
+description: A custom module to check form submits by ip address and send suspected spam to be blocked by Cloudflare.
+core_version_requirement: ^10
+package: Custom
+dependencies:
+  - drupal:redis
