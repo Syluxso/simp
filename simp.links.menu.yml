@@ -1,6 +1,0 @@
-simp.settings:
-  title: 'SIMP Settings'
-  description: 'Configure the Spam Identification Management Protocol settings.'
-  parent: system.admin_config_system
-  route_name: simp.settings_form
-  weight: 10

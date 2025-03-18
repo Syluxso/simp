@@ -1,7 +1,0 @@
-services:
-  simp.spam_checker:
-    class: Drupal\simp\Service\SimpSpamChecker
-    arguments: ['@redis.factory', '@config.factory']
-  simp.cloudflare_client:
-    class: Drupal\simp\Service\SimpCloudflareClient
-    arguments: ['@http_client', '@config.factory']
