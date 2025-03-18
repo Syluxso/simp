@@ -9,7 +9,7 @@ class Simp {
   public $ip        = false;
   public $group     = false;
   public $is_spam   = false;
-  public $threshold = 5; // This can be set to whatever is deemed best.
+  public $threshold = 5;  // This can be set to whatever is deemed best.
   public $window    = 10; // This can be set to whatever is deemed best.
   
   function __construct() {
@@ -27,42 +27,46 @@ class Simp {
   private function redis() {
     try {
       $redis = new Redis();
-      $redis->connect('127.0.0.1', 6379); // Not sure what this would be on an Acquia hosted site.
+      $redis->pconnect('127.0.0.1', 6379); // Persistent connection so that memory is not overwhelmed.
       $redis->auth('password');
+      $this->redis = $redis;
     } catch (Exception $e) {
       $this->log("Redis error: " . $e->getMessage() . "\n");
-      return;
     }
   }
   
   private function track_ip() {
-    $is_spam = false;
-    $key = 'simp:group:' . $this->group;
-    $ttl = 1209600; // 14 days in seconds so that we can view redis data if needed for history.
-    $max_requests = $this->threshold;
-    $time_window = $this->window;
+    if ($this->redis) {
+      $is_spam = false;
+      $key = 'simp:group:' . $this->group;
+      $ttl = 1209600; // 14 days in seconds so that we can view redis data if needed for history.
+      $max_requests = $this->threshold;
+      $time_window = $this->window;
   
-    $current_time = microtime(true); // High-resolution timestamp (seconds + microseconds)
+      $current_time = microtime(true); // High-resolution timestamp (seconds + microseconds)
   
-    $this->redis->pipeline(function ($pipe) use ($key, $current_time, $max_requests, $ttl) {
-      $pipe->lpush($key, $current_time); // Add new timestamp to the front of the list
-      $pipe->ltrim($key, 0, $max_requests - 1); // Keep only the most recent $max_requests entries
-      $pipe->expire($key, $ttl); // Set TTL for the list
-    });
+      $this->redis->pipeline(function ($pipe) use ($key, $current_time, $max_requests, $ttl) {
+        $pipe->lpush($key, $current_time);
+        $pipe->ltrim($key, 0, $max_requests - 1);
+        $pipe->expire($key, $ttl);
+      })->exec();
   
-    $timestamps = $this->redis->lrange($key, 0, -1);
+      $timestamps = $this->redis->lrange($key, 0, -1);
   
-    if (count($timestamps) === $max_requests) {
-      $newest = (float) $timestamps[0]; // First entry (most recent)
-      $oldest = (float) $timestamps[$max_requests - 1]; // Last entry (oldest)
-      $time_difference = $newest - $oldest;
-      if ($time_difference <= $time_window) {
-        $is_spam = true;
-        
+      if (count($timestamps) === $max_requests) {
+        $newest = (float) $timestamps[0]; // First entry (most recent)
+        $oldest = (float) $timestamps[$max_requests - 1]; // Last entry (oldest)
+        $time_difference = $newest - $oldest;
+        if ($time_difference <= $time_window) {
+          $is_spam = true;
+      
+        }
       }
-    }
   
-    $this->is_spam = $is_spam;
+      $this->is_spam = $is_spam;
+    } else {
+      return; // Redis not loaded.
+    }
   }
   
   private function spam_kill() {
@@ -89,9 +93,9 @@ class Simp {
   }
   
   private function log($message) {
-    // you said we can't add log files but in case that is not correct I'd log errors outside of drupal.
+    // This method of logging may still work on Acquia if I'm not mistaken.
     if(!empty($message)) {
-      file_put_contents('/logs/redis_error.log', $message, FILE_APPEND);
+      file_put_contents('php://stderr', $message, FILE_APPEND);
     }
   }
   
